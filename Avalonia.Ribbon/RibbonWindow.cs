@@ -119,7 +119,7 @@ namespace Avalonia.Controls.Ribbon
             }
             catch (KeyNotFoundException ex)
             {
-                Logger.Sink.Log(LogEventLevel.Error, "RibbonControls", this, $"Failed to build window: {x}");
+                Logger.Sink.Log(LogEventLevel.Error, "RibbonControls", this, $"Failed to build window: {ex}");
             }
         }
 

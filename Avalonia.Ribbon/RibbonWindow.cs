@@ -1,11 +1,13 @@
 ﻿using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Avalonia.Controls.Ribbon
 {
@@ -13,28 +15,11 @@ namespace Avalonia.Controls.Ribbon
     {
         public static readonly StyledProperty<IBrush> TitleBarBackgroundProperty;
         public static readonly StyledProperty<IBrush> TitleBarForegroundProperty;
-        
-        /*public static readonly StyledProperty<WindowState> WindowStateProperty;
-        public WindowState WindowState
-        {
-            get => GetValue(WindowStateProperty);
-            set => SetValue(WindowStateProperty, value);
-        }
-
-        public static readonly DirectProperty<RibbonWindow, bool> IsActiveProperty;
-        public bool IsActive
-        {
-            get => GetValue(IsActiveProperty);
-            set => SetValue(IsActiveProperty, value);
-        }*/
 
         static RibbonWindow()
         {
             TitleBarBackgroundProperty = AvaloniaProperty.Register<RibbonWindow, IBrush>(nameof(TitleBarBackground));
             TitleBarForegroundProperty = AvaloniaProperty.Register<RibbonWindow, IBrush>(nameof(TitleBarForeground));
-            /*WindowStateProperty = Window.WindowStateProperty.AddOwner<RibbonWindow>();
-            IsActiveProperty = Window.IsActiveProperty.AddOwner<RibbonWindow>(x => x.IsActive, (x, o) => x.IsActive = o);*/
-            //HasSystemDecorationsProperty.OverrideDefaultValue(typeof(RibbonWindow), false);
         }
 
         Type IStyleable.StyleKey => typeof(RibbonWindow);
@@ -66,41 +51,20 @@ namespace Avalonia.Controls.Ribbon
             return e.NameScope.Get<T>(name);
         }
 
-        protected override void OnTemplateApplied(TemplateAppliedEventArgs e)
+        protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {
-            base.OnTemplateApplied(e);
-            var window = this;// (Window)this.GetVisualRoot();
+            base.OnApplyTemplate(e);
+            var window = this;
             try
             {
                 var titleBar = GetControl<Control>(e, "TitleBar");
 
                 if (Environment.OSVersion.Platform == PlatformID.Win32NT)
                 {
-
                     titleBar.DoubleTapped += delegate
                     {
                         window.WindowState = ((Window)this.GetVisualRoot()).WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
                     };
-                    /*window.Activated += (sneder, args) => IsActive = true;
-                    window.Deactivated += (sneder, args) => IsActive = false;
-                    window.PositionChanged += (sneder, args) => WindowState = window.WindowState;*/
-                    /*window.PropertyChanged += (sender, propertyChnagedArgs) =>
-                    {
-                        if (propertyChnagedArgs.Property.Name.Equals(nameof(WindowState)))
-                        {
-                            /*if (window.WindowState.HasFlag(WindowState.Maximized))
-                                GetControl<Image>(e, "ImageMaximizeButton").Source = new Bitmap("./Assets/already_maximized.png");
-                            else
-                                GetControl<Image>(e, "ImageMaximizeButton").Source = new Bitmap("./Assets/maximize.png");*
-                            if (WindowState != window.WindowState)
-                                WindowState = window.WindowState;
-                        }
-                        else if (propertyChnagedArgs.Property.Name.Equals(nameof(IsActive)))
-                        {
-                            if (IsActive != window.IsActive)
-                                IsActive = window.IsActive;
-                        }
-                    };*/
                 }
 
                 titleBar.PointerPressed += (object sender, PointerPressedEventArgs ep) =>
@@ -125,9 +89,21 @@ namespace Avalonia.Controls.Ribbon
                 }
                 catch (Exception x)
                 {
-
+                    Logger.Sink.Log(LogEventLevel.Debug, "RibbonControls", this, $"Failed setup all sides: {x}");
                 }
 
+                try
+                {
+                    var icon = GetControl<Image>(e, "PART_Icon");
+                    if (Icon != null)
+                    {
+                        icon.Source = GetIcon(Icon);
+                    }
+                }
+                catch (Exception x)
+                {
+                    Logger.Sink.Log(LogEventLevel.Warning, "RibbonControls", this, $"Failed to load Icon: {x}");
+                }
                 GetControl<Button>(e, "MinimizeButton").Click += delegate
                 {
                     window.WindowState = WindowState.Minimized;
@@ -143,8 +119,16 @@ namespace Avalonia.Controls.Ribbon
             }
             catch (KeyNotFoundException ex)
             {
-
+                Logger.Sink.Log(LogEventLevel.Error, "RibbonControls", this, $"Failed to build window: {x}");
             }
+        }
+
+        Bitmap GetIcon(WindowIcon icon)
+        {
+            using var stream = new MemoryStream();
+            icon.Save(stream);
+            stream.Seek(0, SeekOrigin.Begin);
+            return new Bitmap(stream);
         }
     }
 }
